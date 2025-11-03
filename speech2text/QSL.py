@@ -70,7 +70,7 @@ class AudioQSL:
                                        self.unload_query_samples)
 
         print(
-            "Dataset loaded with {0:.2f} hours. Filtered {1:.2f} hours. Number of samples: {2}".format(
+            "================Dataset loaded with {0:.2f} hours. Filtered {1:.2f} hours. Number of samples: {2}".format(
                 self.manifest.duration / 3600,
                 self.manifest.filtered_duration / 3600,
                 self.count))

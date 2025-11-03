@@ -22,9 +22,10 @@
 #/bin/bash
 
 echo "Time Start: $(date +%s)"
-export WORKSPACE_DIR="/workspace"
-export DATA_DIR="/data"
+export WORKSPACE_DIR="./whisper"
+export DATA_DIR=${WORKSPACE_DIR}/dataset
 export MANIFEST_FILE="${DATA_DIR}/dev-all-repack.json"
+export MODEL_PATH=${WORKSPACE_DIR}/model
 export RUN_LOGS=${WORKSPACE_DIR}/run_output
 export SCENARIO="Offline"
 
@@ -43,10 +44,11 @@ echo "START_CORES: ${START_CORES}"
 
 python reference_mlperf.py \
     --dataset_dir ${DATA_DIR} \
+    --model_path ${MODEL_PATH} \
     --manifest ${MANIFEST_FILE} \
     --scenario ${SCENARIO} \
     --log_dir ${RUN_LOGS} \
-    --num_workers ${NUM_INSTS} \
+    --num_workers 1 \
     "--accuracy"
 
 echo "Time Stop: $(date +%s)"

@@ -70,12 +70,14 @@ def main():
     log_path = args.log_dir
     os.makedirs(log_path, exist_ok=True)
 
+    print(args)
+
     sut = vllmSUT(args.dataset_dir,
                   args.manifest,
                   args.perf_count,
                   args.model_path,
                   num_workers=args.num_workers,
-                  device="cpu")
+                  device="cuda")
     sut.start()
 
     settings = lg.TestSettings()

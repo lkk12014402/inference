@@ -34,7 +34,7 @@ import torch.multiprocessing as mp
 from vllm import LLM, SamplingParams
 
 # Optimization packages
-from numa import schedule, memory
+# from numa import schedule, memory
 
 # Local python packages
 from QSL import AudioQSL, AudioQSLInMemory
@@ -154,11 +154,11 @@ class Instance(mp.Process):
         self.finished = False
 
     def run(self):
-        node_list = tuple([math.floor(node) for node in self.node_list])
-        memory.set_membind_nodes(*node_list)
-        schedule.run_on_cpus(os.getpid(), *self.core_list)
-        print(f"Binding rank {self.rank} to nodes {node_list}")
-        print(f"Binding rank {self.rank} to cores {self.core_list}")
+        # node_list = tuple([math.floor(node) for node in self.node_list])
+        # memory.set_membind_nodes(*node_list)
+        # schedule.run_on_cpus(os.getpid(), *self.core_list)
+        # print(f"Binding rank {self.rank} to nodes {node_list}")
+        # print(f"Binding rank {self.rank} to cores {self.core_list}")
 
         dataset_vocab = labels
 
@@ -172,6 +172,7 @@ class Instance(mp.Process):
 
         dtype = "bfloat16"
         print(f"Precision: {dtype}")
+        """
         model = LLM(
             model=self.model_path,
             dtype=dtype,
@@ -185,13 +186,38 @@ class Instance(mp.Process):
             num_scheduler_steps=1,
             limit_mm_per_prompt={"audio": 1},
         )
+        """
+        model_kwargs={
+            "model": self.model_path,
+            #"dtype": 'float16',
+            "dtype": dtype,
+            "skip_tokenizer_init": False,
+            "tensor_parallel_size": 1,
+            "pipeline_parallel_size": 1,
+            "max_num_seqs": 64,
+            "max_model_len": 448,
+            "enforce_eager": True,
+            "limit_mm_per_prompt": {"audio": 1},
+            #"max_num_batched_tokens": MAX_NUM_BATCHED_TOKENS,
+            #"enable_prefix_caching": False,
+            #"distributed_executor_backend": "spawn",
+            # "calculate_kv_scales": True,
+        }
+
+        #if XPU_COUNT>0:
+        #    model_kwargs["kv_cache_dtype"] = "int8"
+        #else:
+        #    model_kwargs["kv_cache_dtype"] = "fp8_e5m2"
+        # model_kwargs["kv_cache_dtype"] = "fp8"
+        self.model = LLM(**model_kwargs)
+
         sampling_params = SamplingParams(
             temperature=0,
             top_p=1.0,
             max_tokens=200,
         )
 
-        self.model = model
+        # self.model = model
         self.sampling_params = sampling_params
         with self.cond_var:
             self.alive_counter.value += 1
@@ -276,6 +302,7 @@ class vllmSUT:
                             dataset_vocab,
                             sample_rate,
                             perf_count)
+
         self.query_queue = mp.JoinableQueue()
         self.output_queue = mp.Queue()
         self.alive_counter = mp.Value("i", 0)
@@ -283,6 +310,9 @@ class vllmSUT:
         self.sample_counter = mp.Value("i", 0)
 
     def start(self):
+
+
+
         node_start_cores = get_start_cores(start_cores)
         core_lists = []
         if insts_per_node > 0:
@@ -300,9 +330,12 @@ class vllmSUT:
                                     1) *
                                 cores_per_inst)))
 
+        log.info(f"===============================================self.num_workers: {self.num_workers}")
         for j in range(self.num_workers):
             core_list = core_lists[j]
 
+            log.info(f"================================================j: {j}")
+            log.info(f"================================================core_list: {core_list}")
             worker = Instance(
                 model_path=self.model_path,
                 dataset_path=self.dataset_path,
